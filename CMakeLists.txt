@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(deep-packet-inspecion)
+project(dpi)
 
 set(CMAKE_C_FLAGS "-fPIC -ggdb -Wall")
 set(CMAKE_C_FLAGS_RELEASE "-Os")
