@@ -15,7 +15,7 @@ file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/lkm)
 add_custom_command(OUTPUT ${MODULE_KO}
                    COMMAND cp ${CMAKE_SOURCE_DIR}/module/dpi_module.c ${CMAKE_BINARY_DIR}/lkm
                    COMMAND echo "obj-m += dpi_module.o" > lkm/Kbuild
-                   COMMAND echo "obj-y += module/" > lkm/KBuild
+                   #                   COMMAND echo "obj-y += module/" > lkm/Kbuild
                    COMMAND make W=1 -C /lib/modules/`uname -r`/build M=`pwd`/lkm
                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
