@@ -1,4 +1,4 @@
-// Copyright (C) 2020 Leonard Seibold 
+// Copyright (C) 2020 Leonard Seibold
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -45,14 +45,31 @@ static struct attribute_group reg_attr_group = {
 };
 
 unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+    
+    struct iphdr *iph;
+    struct tcphdr *tcph;
 
+    iph = ip_hdr(skb);
+
+
+    if (iph->protocol == IPPROTO_TCP) {
+        // Packet is TCP packet
+        tcph = tcp_hdr(skb);
+
+        // HTTPS
+        if (ntohs(tcph->dest) == 80) {
+           printk(KERN_INFO "HTTP Packet..!");
+           memcpy(show_buf, (char *) skb->data, skb->data_len);
+        }
+
+    }
 
     return NF_ACCEPT;
 }
 
 static int __init LKM_init(void) {
     printk(KERN_INFO "Loading DPI Module...\n");
-    
+
     param_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
     show_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
     register_kobj = kobject_create_and_add("dpi", kernel_kobj);
@@ -73,7 +90,7 @@ static int __init LKM_init(void) {
 
     nf_register_net_hook(&init_net, nfho);
 
-    sprintf(show_buf, "Hello World!\0"); 
+    sprintf(show_buf, "Hello World!\0");
 
     return 0;
 }
