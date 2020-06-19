@@ -10,7 +10,7 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
-#define MODULE_NAME "dpi"
+#include "dpi_module.h"
 
 MODULE_AUTHOR("Leonard Seibold <leo@zrtx.de>");
 MODULE_LICENSE("GPL");
@@ -90,7 +90,7 @@ static int __init LKM_init(void) {
 
     nf_register_net_hook(&init_net, nfho);
 
-    sprintf(show_buf, "Hello World!\0");
+    sprintf(show_buf, "Hello World!");
 
     return 0;
 }
