@@ -23,11 +23,16 @@ static char *show_buf;
 
 static struct nf_hook_ops *nfho = NULL;
 
-static ssize_t __used show_value(struct kobject *kobj, struct kobj_attribute *attr, char *buf) {
+static ssize_t __used show_value(struct kobject *kobj,
+                                 struct kobj_attribute *attr,
+                                 char *buf) {
     return sprintf(buf, show_buf);
 }
 
-static ssize_t __used store_value(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count) {
+static ssize_t __used store_value(struct kobject *kobj,
+                                  struct kobj_attribute *attr,
+                                  const char *buf, 
+                                  size_t count) {
     printk(KERN_INFO "Read value: %s\n", buf);
     strncpy(param_buf, buf, PAGE_SIZE - 1);
     return count;
@@ -44,7 +49,9 @@ static struct attribute_group reg_attr_group = {
     .attrs = register_attrs
 };
 
-unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_state *state) {
+unsigned int hook_func(void *priv,
+                       struct sk_buff *skb, 
+                       const struct nf_hook_state *state) {
     
     struct iphdr *iph;
     struct tcphdr *tcph;
