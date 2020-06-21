@@ -11,43 +11,16 @@
 #include <linux/udp.h>
 
 #include "dpi_module.h"
+#include "dpi_socketio.h"
 
 MODULE_AUTHOR("Leonard Seibold <leo@zrtx.de>");
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("LKM helping you to perform deep packet inspection");
 MODULE_VERSION("0.1");
 
-static struct kobject *register_kobj;
-static char *param_buf;
-static char *show_buf;
+static sock_handler *sck_h;
 
 static struct nf_hook_ops *nfho = NULL;
-
-static ssize_t __used show_value(struct kobject *kobj,
-                                 struct kobj_attribute *attr,
-                                 char *buf) {
-    return sprintf(buf, show_buf);
-}
-
-static ssize_t __used store_value(struct kobject *kobj,
-                                  struct kobj_attribute *attr,
-                                  const char *buf, 
-                                  size_t count) {
-    printk(KERN_INFO "Read value: %s\n", buf);
-    strncpy(param_buf, buf, PAGE_SIZE - 1);
-    return count;
-}
-
-static struct kobj_attribute store_val_attribute = __ATTR(packets, 0660, show_value, store_value);
-
-static struct attribute *register_attrs[] = {
-    &store_val_attribute.attr,
-    NULL,
-};
-
-static struct attribute_group reg_attr_group = {
-    .attrs = register_attrs
-};
 
 unsigned int hook_func(void *priv,
                        struct sk_buff *skb, 
@@ -77,6 +50,8 @@ unsigned int hook_func(void *priv,
 static int __init LKM_init(void) {
     printk(KERN_INFO "Loading DPI Module...\n");
 
+    sck_h = create_sock_handler();
+
     param_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
     show_buf = kzalloc(PAGE_SIZE, GFP_KERNEL);
     register_kobj = kobject_create_and_add("dpi", kernel_kobj);
@@ -99,11 +74,16 @@ static int __init LKM_init(void) {
 
     sprintf(show_buf, "Hello World!");
 
+    sck_h->accept(sck_h);    
+
     return 0;
 }
 
 static void __exit LKM_exit(void) {
     printk(KERN_INFO "Cleaning up DPI Module...\n");
+    
+    sck_h->destroy(sck_h);    
+
     kfree(param_buf);
     kfree(show_buf);
     kobject_put(register_kobj);

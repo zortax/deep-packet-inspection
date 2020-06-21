@@ -2,57 +2,134 @@
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <asm/processor.h>
 
 #include "dpi_socketio.h"
 
-#define SZ_SOCKADDR     sizeof(struct sockaddr_un)
-#define SZ_MSGHDR       sizeof(struct msghdr)
-
-struct socket *sock = NULL;
-struct socket *client = NULL;
-
-struct msghdr *msg = NULL;
-struct sockaddr_un *addr = NULL;
-
-int setup_domain_socket(void) {
-    int retval;
-
-    addr = (struct sockaddr_un *) kcalloc(1, SZ_SOCKADDR, GFP_KERNEL);
-    msg = (struct msghdr *) kcalloc(1, SZ_MSGHDR, GFP_KERNEL);
-
-    retval = sock_create(AF_UNIX, SOCK_STREAM, 0, &sock);
-
-    memset(addr, 0, SZ_SOCKADDR);
-    addr->sun_family = AF_UNIX;
-    strcpy(addr->sun_path, SOCKET_PATH);
-
-    retval = sock->ops->bind(sock, addr, SZ_SOCKADDR);
-    retval = sock->ops->listen(sock, LISTEN);
-    retval = sock->ops->accept(sock, client, 0);
-
+void _sock_handler_destroy(sock_handler *self) {
+    if (self->state == Connected) {
+        self->client->ops->shutdown(self->client, SHUT_RDWR);
+        kfree(self->client);
+    }
+    if (self->state &  (Initialized | Connected | Error_Send | Error_Recv)) {
+        self->sock->ops->shutdown(self->sock, SHUT_RDWR);
+    }
+    kfree(self->sock);
+    kfree(self);
 }
 
-void send_message(unsigned char *buf, size_t len) {
-    struct iovec iov;
+void _sock_handler_accept(sock_handler *self) {
+    int retval;
+
+    if (self->state != Initialized) return;
+
+    retval = self->sock->ops->listen(self->sock, LISTEN);
+    if (retval == 0) {
+        self->state = Error_Listen;
+        return;
+    }
+    retval = self->sock->ops->accept(self->sock, self->client, 0, true);
+    if (retval == 0) {
+        self->state = Error_Accept;
+        return;
+    }
+    self->state = Connected;
+}
+
+void _sock_handler_send_msg(sock_handler *self, unsigned char *buf, size_t len) {
     mm_segment_t oldfs;
     int retval;
 
-    memset(msg, 0, SZ_MSGHDR);
-    memset(&iov, 0, sizeof(iov));
+    if (self->state != Connected) return;
 
-    msg->msg_name = 0;
-    msg->msg_namelen = 0;
-    msg->msg_iov = &iov;
-    msg->msg_iov->iob_base = buf;
-    msg->msg_iov->iov_len = len+1;
-    msg->msg_iovlen = 1;
-    msg->msg_control = NULL;
-    msg->msg_controllen = 0;
-    msg->msg_flags = 0;
+    memset(&(self->msg), 0, sizeof(self->msg));
+    memset(&(self->iov), 0, sizeof(self->iov));
+
+    self->msg.msg_name = 0;
+    self->msg.msg_namelen = 0;
+    self->msg.msg_iov = &(self->iov);
+    self->msg.msg_iov->iov_base = buf;
+    self->msg.msg_iov->iov_len = len;
+    self->msg.msg_iovlen = 1;
+    self->msg.msg_control = NULL;
+    self->msg.msg_controllen = 0;
+    self->msg.msg_flags = 0;
 
     oldfs = get_fs();
     set_fs(KERNEL_DS);
-    retval = sock_sendmsg(client, &msg, len+1);
+
+    retval = sock_recvmsg(self->client, &(self->msg), 0);
+
     set_fs(oldfs);
+
+    if (retval == 0) {
+        self->state = Error_Send;
+    }
+}
+
+void _sock_handler_recv_msg(sock_handler *self, unsigned char *buf, size_t len) {
+    mm_segment_t oldfs;
+    int retval;
+
+    if (self->state != Connected) return;
+
+    memset(&(self->msg), 0, sizeof(self->msg));
+    memset(&(self->iov), 0, sizeof(self->iov));
+
+    self->msg.msg_name = 0;
+    self->msg.msg_namelen = 0;
+    self->msg.msg_iov = &(self->iov);
+    self->msg.msg_iov->iov_base = buf;
+    self->msg.msg_iov->iov_len = len;
+    self->msg.msg_iovlen = 1;
+    self->msg.msg_control = NULL;
+    self->msg.msg_controllen = 0;
+    self->msg.msg_flags = 0;
+
+    oldfs = get_fs();
+    set_fs(KERNEL_DS);
+
+    retval = sock_sendmsg(self->client, &(self->msg), len);
+
+    set_fs(oldfs);
+
+    if (retval == 0) {
+        self->state = Error_Send;
+    }
+
+}
+
+sock_handler * create_sock_handler(void) {
+    
+    int retval;
+
+    sock_handler *handler = (sock_handler *) kcalloc(1, sizeof(sock_handler), GFP_KERNEL);
+
+    handler->accept = _sock_handler_accept;
+    handler->send_msg = _sock_handler_send_msg;
+    handler->recv_msg = _sock_handler_recv_msg;
+
+    retval = sock_create(AF_UNIX, SOCK_STREAM, 0, &(handler->sock));
+
+    if (retval == 0) {
+        handler->state = Error_SockCreate;
+        return handler;
+    }
+
+    memset(&(handler->addr), 0, sizeof(handler->addr));
+    handler->addr.sun_family = AF_UNIX;
+    strcpy(handler->addr.sun_path, SOCKET_PATH);
+    
+    retval = handler->sock->ops->
+        bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(handler->addr));
+    
+    if (retval == 0) {
+        handler->state = Error_Bind;
+        return handler;
+    }
+
+    handler->state = Initialized;
+    
+    return handler;
 }
 
