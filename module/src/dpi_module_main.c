@@ -61,7 +61,7 @@ static int __init LKM_init(void) {
     sck_h = create_sock_handler();
 
     if (sck_h->state & (Error_SockCreate | Error_Bind)) {
-        printk(KERN_ALERT "Couldn't create IPC socket. Exiting.");
+        printk(KERN_ALERT "Couldn't create IPC socket (Error: %d). Exiting.", sck_h->state);
         //sck_h->destroy(sck_h);
         return -EIO;
     }
