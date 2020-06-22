@@ -62,7 +62,7 @@ static int __init LKM_init(void) {
 
     if (sck_h->state & (Error_SockCreate | Error_Bind)) {
         printk(KERN_ALERT "Couldn't create IPC socket. Exiting.");
-        sck_h->destroy(sck_h);
+        //sck_h->destroy(sck_h);
         return -EIO;
     }
 
