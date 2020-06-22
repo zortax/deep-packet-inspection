@@ -3,6 +3,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/uio.h>
+#include <linux/string.h>
 #include <asm/processor.h>
 
 #include "dpi_socketio.h"
@@ -133,7 +134,7 @@ sock_handler * create_sock_handler(void) {
     strcpy(handler->addr.sun_path, SOCKET_PATH);
     
     retval = handler->sock->ops->
-        bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(handler->addr)-1);
+        bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(struct msghdr));
     
     if (retval == 0) {
         handler->state = Error_Bind;
