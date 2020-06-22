@@ -32,6 +32,7 @@ struct _sock_handler {
 
     void (*destroy)(sock_handler *self);
     void (*accept)(sock_handler *self);
+    void (*disc_client)(sock_handler *self);
     void (*send_msg)(sock_handler *self, unsigned char *buf, size_t len);
     void (*recv_msg)(sock_handler *self, unsigned char *buf, size_t len);
 };
@@ -41,6 +42,8 @@ sock_handler * create_sock_handler(void);
 void _sock_handler_destroy(sock_handler *self);
 
 void _sock_handler_accept(sock_handler *self);
+
+void _sock_handler_disc_client(sock_handler *self);
 
 void _sock_handler_send_msg(sock_handler *self, unsigned char *buf, size_t len);
 
