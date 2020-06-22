@@ -133,7 +133,7 @@ sock_handler * create_sock_handler(void) {
     strcpy(handler->addr.sun_path, SOCKET_PATH);
     
     retval = handler->sock->ops->
-        bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(handler->addr));
+        bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(handler->addr)-1);
     
     if (retval == 0) {
         handler->state = Error_Bind;
