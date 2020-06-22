@@ -10,8 +10,8 @@ flags = [
 '-I', '.',
 '-I./module/include',
 '-I./library/include',
-'-I/lib/modules/5.6.15-arch1-1/build/include',
-'-I/lib/modules/5.6.15-arch1-1/build/arch/x86/include'
+'-I/lib/modules/5.7.4-arch1-1/build/include',
+'-I/lib/modules/5.7.4-arch1-1/build/arch/x86/include'
 ]
 
 def Settings( **kwargs ):
