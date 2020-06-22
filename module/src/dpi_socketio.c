@@ -124,7 +124,7 @@ sock_handler * create_sock_handler(void) {
     handler->recv_msg = _sock_handler_recv_msg;
 
     retval = sock_create(AF_UNIX, SOCK_STREAM, 0, &(handler->sock));
-    if (retval == 0) {
+    if (retval < 0) {
         handler->state = Error_SockCreate;
         return handler;
     }
@@ -136,7 +136,7 @@ sock_handler * create_sock_handler(void) {
     retval = handler->sock->ops->
         bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(struct msghdr));
     
-    if (retval == 0) {
+    if (retval < 0) {
         handler->state = Error_Bind;
         return handler;
     }
