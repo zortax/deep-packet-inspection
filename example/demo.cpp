@@ -4,7 +4,7 @@
 using namespace std;
 
 unsigned int hook_func(p_buff *buf) {
-
+    cout << "Dropping packet!" << endl;
     return DPI_DROP;
 }
 

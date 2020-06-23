@@ -53,7 +53,7 @@ unsigned int hook_func(void *priv,
         return NF_ACCEPT;
     }
 
-    return (unsigned int) *ans;
+    return *((unsigned int *) ans);
 }
 
 static int __init LKM_init(void) {
