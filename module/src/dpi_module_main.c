@@ -10,6 +10,7 @@
 #include <linux/tcp.h>
 #include <linux/udp.h>
 
+#include "dpi_shared_defs.h"
 #include "dpi_module.h"
 #include "dpi_socketio.h"
 

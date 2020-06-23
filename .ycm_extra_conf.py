@@ -3,7 +3,6 @@ flags = [
 '-Wextra',
 '-Wc++98-compat',
 '-D__KERNEL__',
-'-nostdinc',
 '-DUSE_CLANG_COMPLETER',
 '-std=c99',
 '-x', 'c',

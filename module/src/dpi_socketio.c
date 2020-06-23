@@ -4,19 +4,16 @@
 #include <linux/module.h>
 #include <linux/uio.h>
 #include <linux/string.h>
+#include <net/sock.h>
 #include <asm/processor.h>
 
+#include "dpi_shared_defs.h"
 #include "dpi_socketio.h"
 
 void _sock_handler_destroy(sock_handler *self) {
     if (!self) return;
-    if (self->state == Connected && self->client) {
-        self->client->ops->shutdown(self->client, SHUT_RDWR);
-        kfree(self->client);
-    }
     if ((self->state & (Initialized | Connected | Error_Send | Error_Recv)) && self->sock) {
-        self->sock->ops->shutdown(self->sock, SHUT_RDWR);
-        kfree(self->sock);
+        sock_release(self->sock);
     }
     kfree(self);
 }
@@ -131,7 +128,7 @@ sock_handler * create_sock_handler(void) {
 
     memset(&(handler->addr), 0, sizeof(handler->addr));
     handler->addr.sun_family = AF_UNIX;
-    strcpy(handler->addr.sun_path, SOCKET_PATH);
+    strcpy(handler->addr.sun_path, SOCK_PATH);
     
     retval = handler->sock->ops->
         bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(struct msghdr));

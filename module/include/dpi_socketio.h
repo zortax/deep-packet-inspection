@@ -6,7 +6,6 @@
 #include <net/sock.h>
 #include <uapi/linux/un.h>
 
-#define SOCKET_PATH         "/var/packetstream.socket"
 #define LISTEN              10
 
 enum sock_handler_state {
