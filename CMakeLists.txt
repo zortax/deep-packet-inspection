@@ -23,15 +23,15 @@ add_custom_target(dpi_module
 
 execute_process(COMMAND uname -r OUTPUT_VARIABLE KERNEL OUTPUT_STRIP_TRAILING_WHITESPACE)
 
-add_library(${PROJECT_NAME} SHARED library/src/dpi.c)
-add_library(${PROJECT_NAME}_static STATIC library/src/dpi.c)
+add_library(${PROJECT_NAME} SHARED library/src/dpi.c library/src/dpi_client.c)
+add_library(${PROJECT_NAME}_static STATIC library/src/dpi.c library/src/dpi_client.c)
 
 include_directories(${PROJECT_NAME} ${LIBRARY_INCLUDE})
 include_directories(${PROJECT_NAME}_static ${LIBRARY_INCLUDE})
 
 add_dependencies(${PROJECT_NAME} dpi_module)
 
-install(FILES ${LIBRARY_INCLUDE}/dpi.h DESTINATION include)
+install(FILES ${LIBRARY_INCLUDE}/dpi.h ${LIBRARY_INCLUDE}/dpi_client.h DESTINATION include)
 install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_static
         LIBRARY DESTINATION lib
         ARCHIVE DESTINATION lib

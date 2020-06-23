@@ -9,7 +9,6 @@ extern "C"{
 #define DPI_DROP    0
 #define DPI_ACCEPT  1
 
-extern client_handler *client;
 
 enum client_state {
     DPI_Connected = 1 << 0,
@@ -19,13 +18,13 @@ enum client_state {
     DPI_Error_Send = 1 << 4
 };
 
-extern int dpi_state;
-
 typedef struct p_buff {
     unsigned int len;
     unsigned char *data;
 } p_buff;
 
+extern client_handler *client;
+extern int dpi_state;
 extern unsigned int (*callback_func)(p_buff *buf);
 
 int dpi_connect(void);

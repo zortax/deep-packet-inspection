@@ -6,6 +6,10 @@
 
 #include "dpi.h"
 
+client_handler *client;
+int dpi_state;
+unsigned int (*callback_func)(p_buff *buf);
+
 int dpi_connect(void) {
     client = create_client_handler();
     if (client->state != Initialized) {
