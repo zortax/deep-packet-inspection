@@ -45,9 +45,7 @@ unsigned int hook_func(void *priv,
         return NF_ACCEPT;
     }
     
-    preempt_enable();
     sck_h->recv_msg(sck_h, ans, ANS_LEN);
-    preempt_disable();
 
     if (sck_h->state == Error_Recv) {
         sck_h->disc_client(sck_h);
