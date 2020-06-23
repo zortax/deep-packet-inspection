@@ -11,14 +11,26 @@ extern "C"{
 
 extern client_handler *client;
 
-typedef struct _p_buff p_buff;
-struct p_buff {
-    unsigned int len;
-    unsigned char *data;
+enum client_state {
+    DPI_Connected = 1 << 0,
+    DPI_CallbackSet = 1 << 1,
+    DPI_Listening = 1 << 2,
+    DPI_Error_Recv = 1 << 3,
+    DPI_Error_Send = 1 << 4
 };
 
-int dpi_connect();
-int dpi_set_callback(unsigned int (*callback)(p_buff *buf));
+extern int dpi_state;
+
+typedef struct p_buff {
+    unsigned int len;
+    unsigned char *data;
+} p_buff;
+
+extern unsigned int (*callback_func)(p_buff *buf);
+
+int dpi_connect(void);
+void dpi_set_callback(unsigned int (*callback)(p_buff *buf));
+void start_callback_loop(void);
 
 #ifdef __cplusplus
 }
