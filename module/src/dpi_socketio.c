@@ -32,7 +32,7 @@ void _sock_handler_accept(sock_handler *self) {
     printk(KERN_INFO "Waiting for IPC client...");
     retval = self->sock->ops->accept(self->sock, self->client, 0, true);
     if (retval == 0) {
-        printk(KERN_ALERT "Couldn't accept IPC client.")
+        printk(KERN_ALERT "Couldn't accept IPC client.");
         self->state = Error_Accept;
         return;
     }

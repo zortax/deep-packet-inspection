@@ -83,7 +83,7 @@ static int __init LKM_init(void) {
 
 static void __exit LKM_exit(void) {
     printk(KERN_INFO "Cleaning up DPI Module...\n");
-    sck_h->destroy(sck_h);    
+    sck_h->destroy(sck_h); 
     nf_unregister_net_hook(&init_net, nfho);
 }
 
