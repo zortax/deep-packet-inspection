@@ -9,6 +9,7 @@
 #include <linux/ip.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
+#include <linux/preempt.h>
 
 #include "dpi_shared_defs.h"
 #include "dpi_module.h"
@@ -43,8 +44,10 @@ unsigned int hook_func(void *priv,
         // TODO: start kernelthread to accept
         return NF_ACCEPT;
     }
-
+    
+    preempt_enable();
     sck_h->recv_msg(sck_h, ans, ANS_LEN);
+    preempt_disable();
 
     if (sck_h->state == Error_Recv) {
         sck_h->disc_client(sck_h);
