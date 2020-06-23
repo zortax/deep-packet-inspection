@@ -29,6 +29,16 @@ void _sock_handler_accept(sock_handler *self) {
         self->state = Error_Listen;
         return;
     }
+
+    self->client = (struct socket *) kmalloc(sizeof(struct socket), GFP_KERNEL);
+    retval = sock_create(AF_UNIX, SOCK_STREAM, 0, &self->client);
+
+    if (retval < 0) {
+        printk(KERN_ALERT "Couldn't allocate/create client socket.");
+        self->state = Error_Listen;
+        return;
+    }
+
     printk(KERN_INFO "Waiting for IPC client...");
     retval = self->sock->ops->accept(self->sock, self->client, 0, true);
     if (retval < 0) {
