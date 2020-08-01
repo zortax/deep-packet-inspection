@@ -1,20 +1,32 @@
-#include <iostream>
 #include "dpi.h"
+#include <iostream>
+#include <cstdio>
+#include <string>
 
 using namespace std;
-
-unsigned int hook_func(p_buff *buf) {
-    cout << "Dropping packet!" << endl;
-    return DPI_DROP;
-}
 
 int main() {
     cout << "Connecting..." << endl;
     dpi_connect();
-    cout << "Setting callback..." << endl;
-    dpi_set_callback(hook_func); 
-    cout << "Starting loop..." << endl;
-    start_callback_loop();
-    cout << "Loop stopped. State: " << dpi_state << " (handler state: " << client->state << ")" << endl;
+
+    if (dpi_state != DPI_Connected) {
+        printf("Could not establish IPC connection. State: %d (Client state: "
+               "%d)\n",
+               dpi_state, client->state);
+        return 2;
+    }
+
+    while (dpi_state == DPI_Connected) {
+        p_buff *buf = pull_packet();
+        if (!buf) {
+            printf("Could not pull packet. State: %d (Client state: %d)\n",
+                   dpi_state, client->state);
+            return 0;
+        }
+        printf("Received packet. ID: %d  Length: %d\n", buf->packet_id,
+               buf->len);
+        push_packet(buf, DPI_ACCEPT);
+    }
+
     return 0;
 }

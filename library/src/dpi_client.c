@@ -1,21 +1,23 @@
 // Copyright (C) 2020 Leonard Seibold
-#include <stdlib.h>
+#include "dpi_client.h"
+
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
 
 #include "dpi_shared_defs.h"
-#include "dpi_client.h"
 
 void _client_handler_connect(client_handler *self) {
     int len;
 
-    if (self->state != Initialized) return;
-    
+    if (self->state != Initialized)
+        return;
+
     len = strlen(self->addr.sun_path) + sizeof(self->addr.sun_family);
-    if (connect(self->sock, (struct sockaddr *) &(self->addr), len) < 0) {
+    if (connect(self->sock, (struct sockaddr *)&(self->addr), len) < 0) {
         self->state = Error_Connect;
     } else {
         self->state = Connected;
@@ -29,68 +31,113 @@ void _client_handler_destroy(client_handler *self) {
     free(self);
 }
 
-int _client_handler_recv_msg(client_handler *self, unsigned char *buf) {
-    int len;
+int _client_handler_basic_recv_msg(client_handler *self, unsigned char *buf,
+                                   size_t len) {
+    struct iovec iov = {.iov_base = (void *)buf, .iov_len = len};
 
-    if (self->state != Connected) return 0;
+    struct msghdr msg = {.msg_name = NULL,
+                         .msg_namelen = 0,
+                         .msg_iov = &iov,
+                         .msg_iovlen = 1,
+                         .msg_control = NULL,
+                         .msg_controllen = 0,
+                         .msg_flags = 0};
 
-    memset(&(self->msg), 0, sizeof(self->msg));
-    memset(&(self->iov), 0, sizeof(self->iov));
+    int ret = recvmsg(self->sock, &msg, 0);
 
-    self->iov.iov_base = buf;
-    self->iov.iov_len = ANS_SIZE;
-
-    self->msg.msg_name = NULL;
-    self->msg.msg_namelen = 0;
-    self->msg.msg_iov = &(self->iov);
-    self->msg.msg_iovlen = 1;
-    self->msg.msg_control = NULL;
-    self->msg.msg_controllen = 0;
-    self->msg.msg_flags = 0;
-
-    len = recvmsg(self->sock, &(self->msg), 0);
-
-    if (len <= 0) {
+    if (ret <= 0)
         self->state = Error_Recv;
-    }
 
-    return len;
+    return ret;
 }
 
-int _client_handler_send_msg(client_handler *self, unsigned char *buf, size_t len) {
-    int sent;
+int _client_handler_recv_msg(client_handler *self, unsigned char *buf,
+                             int allocate) {
+    int ret;
+    size_t len;
+    size_t received;
 
-    if (self->state != Connected) return 0;
+    ret = self->basic_recv_msg(self, (unsigned char *)&len, sizeof(size_t));
 
-    memset(&(self->msg), 0, sizeof(self->msg));
-    memset(&(self->iov), 0, sizeof(self->iov));
-
-    self->iov.iov_base = buf;
-    self->iov.iov_len = len;
-
-    self->msg.msg_name = NULL;
-    self->msg.msg_name = 0;
-    self->msg.msg_iov = &(self->iov);
-    self->msg.msg_iovlen = 1;
-    self->msg.msg_control = NULL;
-    self->msg.msg_controllen = 0;
-    self->msg.msg_flags = 0;
-
-    sent = sendmsg(self->sock, &(self->msg), 0);
-
-    if (sent < 0) {
-        self->state = Error_Send;
+    if (ret <= 0) {
+        printf("Failed to receive data buffer length. Return value: %d\n", ret);
+        return ret;
     }
 
-    return sent;
+    if (len > MAX_BUF_SIZE) {
+        self->state = Error_Recv;
+        printf("Received data buffer length (%d) is bigger than maximum buffer "
+               "size (%d)\n",
+               (int)len, MAX_BUF_SIZE);
+        return -1;
+    }
+
+    if (allocate)
+        buf = (unsigned char *)malloc(len);
+
+    received = 0;
+    while (received < len) {
+        ret = self->basic_recv_msg(self, (unsigned char *)(buf + received),
+                                   len - received);
+        if (ret <= 0) {
+            printf("Failed to receive data after receiving %d bytes.",
+                   (int)received);
+            self->state = Error_Recv;
+            if (allocate)
+                free(buf);
+            break;
+        }
+        received += ret;
+    }
+
+    return received;
 }
 
-client_handler * create_client_handler(void) {
-    client_handler *handler = (client_handler *) malloc(sizeof(client_handler));
-   
+int _client_handler_basic_send_msg(client_handler *self, unsigned char *buf,
+                                   size_t len) {
+    int retval;
+    size_t i;
+
+    struct msghdr msg = {.msg_name = NULL,
+                         .msg_namelen = 0,
+                         .msg_iovlen = 1,
+                         .msg_controllen = 0,
+                         .msg_flags = 0};
+
+    if (self->state != Connected)
+        return -1;
+
+    i = 0;
+    while (i < len) {
+        struct iovec iov = {.iov_base = (void *)((unsigned char *)buf + i),
+                            .iov_len = len - i};
+        msg.msg_iov = &iov;
+        retval = sendmsg(self->sock, &msg, msg.msg_flags);
+        if (retval < 0) {
+            self->state = Error_Send;
+            break;
+        }
+        i += retval;
+    }
+
+    return i;
+}
+
+int _client_handler_send_msg(client_handler *self, unsigned char *buf,
+                             size_t len) {
+    if (self->basic_send_msg(self, (unsigned char *)&len, sizeof(size_t)) < 0)
+        return -1;
+    return self->basic_send_msg(self, buf, len);
+}
+
+client_handler *create_client_handler(void) {
+    client_handler *handler = (client_handler *)malloc(sizeof(client_handler));
+
     handler->connect = _client_handler_connect;
-    handler->destroy = _client_handler_connect;
+    handler->destroy = _client_handler_destroy;
+    handler->basic_recv_msg = _client_handler_basic_recv_msg;
     handler->recv_msg = _client_handler_recv_msg;
+    handler->basic_send_msg = _client_handler_basic_send_msg;
     handler->send_msg = _client_handler_send_msg;
 
     handler->sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -108,4 +155,3 @@ client_handler * create_client_handler(void) {
     handler->state = Initialized;
     return handler;
 }
-

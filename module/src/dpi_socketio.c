@@ -1,27 +1,30 @@
 // Copyright (C) 2020 Leonard Seibold
+#include <asm/processor.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/uio.h>
-#include <linux/string.h>
 #include <net/sock.h>
-#include <asm/processor.h>
 
 #include "dpi_shared_defs.h"
 #include "dpi_socketio.h"
 
 void _sock_handler_destroy(sock_handler *self) {
-    if (!self) return;
-    if ((self->state & (Initialized | Connected | Error_Send | Error_Recv)) && self->sock) {
-        sock_release(self->sock);
+    if (!self)
+        return;
+    if ((self->state & (Initialized | Connected | Error_Send | Error_Recv)) &&
+        self->sock) {
+        // kernel_sock_shutdown(self->sock, SHUT_RDWR);
+        // sock_release(self->sock);
     }
-    kfree(self);
+    // kfree(self);
 }
 
 void _sock_handler_accept(sock_handler *self) {
     int retval;
 
-    if (self->state != Initialized) return;
+    if (self->state != Initialized)
+        return;
 
     retval = self->sock->ops->listen(self->sock, LISTEN);
     if (retval < 0) {
@@ -30,7 +33,7 @@ void _sock_handler_accept(sock_handler *self) {
         return;
     }
 
-    self->client = (struct socket *) kmalloc(sizeof(struct socket), GFP_KERNEL);
+    self->client = (struct socket *)kmalloc(sizeof(struct socket), GFP_KERNEL);
     retval = sock_create(AF_UNIX, SOCK_STREAM, 0, &self->client);
 
     if (retval < 0) {
@@ -40,12 +43,14 @@ void _sock_handler_accept(sock_handler *self) {
     }
 
     printk(KERN_INFO "Waiting for IPC client...");
-    retval = self->sock->ops->accept(self->sock, self->client, 0, true);
+    // retval = self->sock->ops->accept(self->sock, self->client, 0, true);
+    retval = kernel_accept(self->sock, &(self->client), 0);
     if (retval < 0) {
         printk(KERN_ALERT "Couldn't accept IPC client.");
         self->state = Error_Accept;
         return;
     }
+    printk(KERN_INFO "IPC client connected.");
     self->state = Connected;
 }
 
@@ -56,81 +61,99 @@ void _sock_handler_disc_client(sock_handler *self) {
     }
 }
 
-void _sock_handler_send_msg(sock_handler *self, unsigned char *buf, size_t len) {
-    mm_segment_t oldfs;
+void _sock_handler_basic_send_msg(sock_handler *self, unsigned char *buf,
+                                  size_t len) {
     int retval;
+    int i;
 
-    if (self->state != Connected) return;
+    struct msghdr msg = {.msg_name = NULL,
+                         .msg_namelen = 0,
+                         .msg_control = NULL,
+                         .msg_controllen = 0,
+                         .msg_flags = 0};
 
-    memset(&(self->msg), 0, sizeof(self->msg));
-    memset(&(self->iov), 0, sizeof(self->iov));
+    if (self->state != Connected)
+        return;
 
-    self->iov.iov_base = buf;
-    self->iov.iov_len = len;
-
-    self->msg.msg_name = 0;
-    self->msg.msg_namelen = 0;
-    self->msg.msg_iter.type = ITER_IOVEC;
-    self->msg.msg_iter.iov = &(self->iov);
-    self->msg.msg_iter.count = 1;
-    self->msg.msg_control = NULL;
-    self->msg.msg_controllen = 0;
-    self->msg.msg_flags = 0;
-
-    oldfs = get_fs();
-    set_fs(KERNEL_DS);
-
-    retval = sock_sendmsg(self->client, &(self->msg));
-
-    set_fs(oldfs);
-
-    if (retval == 0) {
-        self->state = Error_Send;
+    i = 0;
+    while (i < len) {
+        struct kvec iov = {
+            .iov_base = (void *)((unsigned char *)buf + i),
+            .iov_len = len - i,
+        };
+        retval = kernel_sendmsg(self->client, &msg, &iov, 1, iov.iov_len);
+        if (retval < 0) {
+            self->state = Error_Send;
+            break;
+        }
+        i += retval;
     }
 }
 
-void _sock_handler_recv_msg(sock_handler *self, unsigned char *buf, size_t len) {
-    mm_segment_t oldfs;
-    int retval;
-
-    if (self->state != Connected) return;
-
-    memset(&(self->msg), 0, sizeof(self->msg));
-    memset(&(self->iov), 0, sizeof(self->iov));
-
-    self->iov.iov_base = buf;
-    self->iov.iov_len = len;
-
-    self->msg.msg_name = 0;
-    self->msg.msg_namelen = 0;
-    self->msg.msg_iter.type = ITER_IOVEC;
-    self->msg.msg_iter.iov = &(self->iov);
-    self->msg.msg_iter.count = 1;
-    self->msg.msg_control = NULL;
-    self->msg.msg_controllen = 0;
-    self->msg.msg_flags = 0;
-
-    oldfs = get_fs();
-    set_fs(KERNEL_DS);
-
-    retval = sock_recvmsg(self->client, &(self->msg), len);
-
-    set_fs(oldfs);
-
-    if (retval == 0) {
-        self->state = Error_Send;
-    }
+void _sock_handler_send_msg(sock_handler *self, unsigned char *buf,
+                            size_t len) {
+    // Send length of message
+    self->basic_send_msg(self, (unsigned char *)&len, sizeof(size_t));
+    // Send actual data
+    self->basic_send_msg(self, buf, len);
 }
 
-sock_handler * create_sock_handler(void) {
-    
+int _sock_handler_basic_recv_msg(sock_handler *self, unsigned char *buf,
+                                 size_t len) {
+    struct kvec iov = {.iov_base = (void *)buf, .iov_len = len};
+
+    struct msghdr msg = {.msg_name = NULL,
+                         .msg_namelen = 0,
+                         .msg_control = NULL,
+                         .msg_controllen = 0,
+                         .msg_flags = 0};
+
+    return kernel_recvmsg(self->client, &msg, &iov, 1, len, msg.msg_flags);
+}
+
+int _sock_handler_recv_msg(sock_handler *self, unsigned char *buf) {
+    int ret;
+    size_t len;
+    size_t received;
+
+    ret = self->basic_recv_msg(self, (unsigned char *)&len, sizeof(size_t));
+
+    if (ret <= 0) {
+        self->state = Error_Recv;
+        return ret;
+    }
+
+    if (ret != sizeof(size_t) || len > MAX_BUF_SIZE) {
+        self->state = Error_Recv;
+        return -1;
+    }
+
+    received = 0;
+    while (received < len) {
+        ret = self->basic_recv_msg(self, (unsigned char *)(buf + received),
+                                   len - received);
+        if (ret <= 0) {
+            self->state = Error_Recv;
+            break;
+        }
+        received += ret;
+    }
+
+    return received;
+}
+
+sock_handler *create_sock_handler(void) {
+
     int retval;
 
-    sock_handler *handler = (sock_handler *) kcalloc(1, sizeof(sock_handler), GFP_KERNEL);
+    sock_handler *handler =
+        (sock_handler *)kcalloc(1, sizeof(sock_handler), GFP_KERNEL);
 
     handler->accept = _sock_handler_accept;
     handler->disc_client = _sock_handler_disc_client;
+    handler->basic_send_msg = _sock_handler_basic_send_msg;
     handler->send_msg = _sock_handler_send_msg;
+    handler->basic_recv_msg = _sock_handler_basic_recv_msg;
     handler->recv_msg = _sock_handler_recv_msg;
 
     retval = sock_create(AF_UNIX, SOCK_STREAM, 0, &(handler->sock));
@@ -142,17 +165,17 @@ sock_handler * create_sock_handler(void) {
     memset(&(handler->addr), 0, sizeof(handler->addr));
     handler->addr.sun_family = AF_UNIX;
     strcpy(handler->addr.sun_path, SOCK_PATH);
-    
-    retval = handler->sock->ops->
-        bind(handler->sock, (struct sockaddr *) &(handler->addr), sizeof(struct msghdr));
-    
+
+    retval = handler->sock->ops->bind(handler->sock,
+                                      (struct sockaddr *)&(handler->addr),
+                                      sizeof(struct msghdr));
+
     if (retval < 0) {
         handler->state = Error_Bind;
         return handler;
     }
 
     handler->state = Initialized;
-    
+
     return handler;
 }
-

@@ -1,6 +1,7 @@
-// Copyright (C) 2020 Leonard Seibold 
+// Copyright (C) 2020 Leonard Seibold
 #define _GNU_SOURCE
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -22,45 +23,70 @@ int dpi_connect(void) {
     return 1;
 }
 
-void dpi_set_callback(unsigned int (*callback)(p_buff *buf)) {
-    callback_func = callback;
-    dpi_state |= DPI_CallbackSet;
-}
+p_buff *pull_packet(void) {
+    unsigned char *data_buf = NULL;
+    p_buff *packet_buffer = NULL;
+    size_t read;
 
-void start_callback_loop(void) {
-    
-    unsigned char buf[MAX_BUF_SIZE];
-    size_t len;
-    p_buff packet_buffer;
-    unsigned int verdict;
+    if (dpi_state != DPI_Connected)
+        return NULL;
 
-    if (dpi_state == (DPI_Connected | DPI_CallbackSet)) {
-       
-        dpi_state |= DPI_Listening;
+    packet_buffer = (p_buff *)malloc(sizeof(p_buff));
 
-        while (1) {
-            len = client->recv_msg(client, buf);
-        
-            if (len <= 0) {
-                dpi_state |= DPI_Error_Recv;
-                dpi_state ^= DPI_Listening;
-                dpi_state ^= DPI_Connected;
-                return;
-            }
+    read = client->basic_recv_msg(client,
+                                  (unsigned char *)&(packet_buffer->packet_id),
+                                  sizeof(packet_buffer->packet_id));
 
-            memset(&packet_buffer, 0, sizeof(p_buff));
-            packet_buffer.len = len;
-            packet_buffer.data = buf;
-
-            verdict = callback_func(&packet_buffer);
-            len = client->send_msg(client, (unsigned char *) &verdict, ANS_SIZE);
-            if (len < 0) {
-                dpi_state |= DPI_Error_Send;
-                dpi_state ^= DPI_Listening;
-                dpi_state ^= DPI_Connected;
-                return;
-            }
-        } 
+    if (read <= 0) {
+        dpi_state |= DPI_Error_Recv;
+        printf("Couldn't read packet id. Return value: %d\n", (int)read);
+        return NULL;
     }
+
+    read = client->recv_msg(client, data_buf, 1);
+
+    if (read <= 0) {
+        dpi_state |= DPI_Error_Recv;
+        printf("Couldn't read data buffer. Return value: %d\n", (int)read);
+        return NULL;
+    }
+
+    packet_buffer->len = read;
+    packet_buffer->data = data_buf;
+
+    return packet_buffer;
 }
 
+void push_packet(p_buff *buf, unsigned int verdict) {
+    size_t sent;
+
+    if (dpi_state != DPI_Connected)
+        goto clean;
+
+    sent = client->basic_send_msg(client, (unsigned char *)&(buf->packet_id),
+                                  sizeof(buf->packet_id));
+
+    if (sent < sizeof(buf->packet_id)) {
+        dpi_state = DPI_Error_Send;
+        goto clean;
+    }
+
+    sent = client->basic_send_msg(client, (unsigned char *)&verdict,
+                                  sizeof(verdict));
+
+    if (sent < sizeof(buf->packet_id)) {
+        dpi_state = DPI_Error_Send;
+        goto clean;
+    }
+
+    sent = client->send_msg(client, buf->data, buf->len);
+
+    if (sent < buf->len) {
+        dpi_state = DPI_Error_Send;
+        goto clean;
+    }
+
+clean:
+    free(buf->data);
+    free(buf);
+}

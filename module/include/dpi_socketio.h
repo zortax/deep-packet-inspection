@@ -1,12 +1,13 @@
 // Copyright (C) 2020 Leonard Seibold
-#include <linux/types.h>
-#include <linux/socket.h>
 #include <linux/net.h>
+#include <linux/socket.h>
+#include <linux/string.h>
+#include <linux/types.h>
 #include <linux/un.h>
 #include <net/sock.h>
 #include <uapi/linux/un.h>
 
-#define LISTEN              10
+#define LISTEN 10
 
 enum sock_handler_state {
     Initialized = 1 << 0,
@@ -25,18 +26,18 @@ struct _sock_handler {
 
     struct socket *sock;
     struct socket *client;
-    struct msghdr msg;
     struct sockaddr_un addr;
-    struct iovec iov;
 
     void (*destroy)(sock_handler *self);
     void (*accept)(sock_handler *self);
     void (*disc_client)(sock_handler *self);
     void (*send_msg)(sock_handler *self, unsigned char *buf, size_t len);
-    void (*recv_msg)(sock_handler *self, unsigned char *buf, size_t len);
+    void (*basic_send_msg)(sock_handler *self, unsigned char *buf, size_t len);
+    int (*recv_msg)(sock_handler *self, unsigned char *buf);
+    int (*basic_recv_msg)(sock_handler *self, unsigned char *buf, size_t len);
 };
 
-sock_handler * create_sock_handler(void);
+sock_handler *create_sock_handler(void);
 
 void _sock_handler_destroy(sock_handler *self);
 
@@ -44,7 +45,12 @@ void _sock_handler_accept(sock_handler *self);
 
 void _sock_handler_disc_client(sock_handler *self);
 
+void _sock_handler_basic_send_msg(sock_handler *self, unsigned char *buf,
+                                  size_t len);
+
 void _sock_handler_send_msg(sock_handler *self, unsigned char *buf, size_t len);
 
-void _sock_handler_recv_msg(sock_handler *self, unsigned char *buf, size_t len);
+int _sock_handler_basic_recv_msg(sock_handler *self, unsigned char *buf,
+                                 size_t len);
 
+int _sock_handler_recv_msg(sock_handler *self, unsigned char *buf);
