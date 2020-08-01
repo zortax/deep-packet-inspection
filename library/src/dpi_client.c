@@ -1,6 +1,7 @@
 // Copyright (C) 2020 Leonard Seibold
 #include "dpi_client.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +52,7 @@ int _client_handler_basic_recv_msg(client_handler *self, unsigned char *buf,
     return ret;
 }
 
-int _client_handler_recv_msg(client_handler *self, unsigned char *buf,
+int _client_handler_recv_msg(client_handler *self, unsigned char **buf,
                              int allocate) {
     int ret;
     size_t len;
@@ -73,18 +74,19 @@ int _client_handler_recv_msg(client_handler *self, unsigned char *buf,
     }
 
     if (allocate)
-        buf = (unsigned char *)malloc(len);
+        *buf = (unsigned char *)malloc(len);
 
+    printf("Received data buffer length: %d\n", (int)len);
     received = 0;
     while (received < len) {
-        ret = self->basic_recv_msg(self, (unsigned char *)(buf + received),
+        ret = self->basic_recv_msg(self, (unsigned char *)((*buf) + received),
                                    len - received);
         if (ret <= 0) {
-            printf("Failed to receive data after receiving %d bytes.",
+            printf("Failed to receive data after receiving %d bytes.\n",
                    (int)received);
             self->state = Error_Recv;
             if (allocate)
-                free(buf);
+                free(*buf);
             break;
         }
         received += ret;
@@ -115,6 +117,7 @@ int _client_handler_basic_send_msg(client_handler *self, unsigned char *buf,
         retval = sendmsg(self->sock, &msg, msg.msg_flags);
         if (retval < 0) {
             self->state = Error_Send;
+            printf("Error while send: %d\n", errno);
             break;
         }
         i += retval;
@@ -125,9 +128,16 @@ int _client_handler_basic_send_msg(client_handler *self, unsigned char *buf,
 
 int _client_handler_send_msg(client_handler *self, unsigned char *buf,
                              size_t len) {
-    if (self->basic_send_msg(self, (unsigned char *)&len, sizeof(size_t)) < 0)
+    int ret;
+
+    ret = self->basic_send_msg(self, (unsigned char *)&len, sizeof(size_t));
+    if (ret < 0) {
+        printf("Sent less then 0 bytes.\n");
         return -1;
-    return self->basic_send_msg(self, buf, len);
+    }
+    ret = self->basic_send_msg(self, buf, len);
+    printf("Sent data buffer. Return value: %d.\n", ret);
+    return ret;
 }
 
 client_handler *create_client_handler(void) {

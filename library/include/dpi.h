@@ -17,7 +17,7 @@ enum client_state {
 
 typedef struct p_buff {
     int packet_id;
-    unsigned int len;
+    size_t len;
     unsigned char *data;
 } p_buff;
 

@@ -92,6 +92,8 @@ void _sock_handler_basic_send_msg(sock_handler *self, unsigned char *buf,
 
 void _sock_handler_send_msg(sock_handler *self, unsigned char *buf,
                             size_t len) {
+
+    printk(KERN_INFO "Sending data buffer with length %d", (int)len);
     // Send length of message
     self->basic_send_msg(self, (unsigned char *)&len, sizeof(size_t));
     // Send actual data
@@ -117,13 +119,15 @@ int _sock_handler_recv_msg(sock_handler *self, unsigned char *buf) {
     size_t received;
 
     ret = self->basic_recv_msg(self, (unsigned char *)&len, sizeof(size_t));
+    
+    printk(KERN_INFO " - Received data buffer length: %d. Bytes read: %d.", (int)len, ret);
 
     if (ret <= 0) {
         self->state = Error_Recv;
         return ret;
     }
 
-    if (ret != sizeof(size_t) || len > MAX_BUF_SIZE) {
+    if (len > MAX_BUF_SIZE) {
         self->state = Error_Recv;
         return -1;
     }
@@ -132,6 +136,7 @@ int _sock_handler_recv_msg(sock_handler *self, unsigned char *buf) {
     while (received < len) {
         ret = self->basic_recv_msg(self, (unsigned char *)(buf + received),
                                    len - received);
+        printk(KERN_INFO " - Received %d data buffer bytes.", ret);
         if (ret <= 0) {
             self->state = Error_Recv;
             break;

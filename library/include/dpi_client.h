@@ -25,7 +25,7 @@ struct _client_handler {
     void (*connect)(client_handler *self);
     void (*destroy)(client_handler *self);
     int (*basic_recv_msg)(client_handler *self, unsigned char *buf, size_t len);
-    int (*recv_msg)(client_handler *self, unsigned char *buf, int allocate);
+    int (*recv_msg)(client_handler *self, unsigned char **buf, int allocate);
     int (*basic_send_msg)(client_handler *self, unsigned char *buf, size_t len);
     int (*send_msg)(client_handler *self, unsigned char *buf, size_t len);
 };
@@ -36,7 +36,7 @@ void _client_handler_connect(client_handler *self);
 
 void _client_handler_destroy(client_handler *self);
 
-int _client_handler_recv_msg(client_handler *self, unsigned char *buf,
+int _client_handler_recv_msg(client_handler *self, unsigned char **buf,
                              int allocate);
 
 int _client_handler_send_msg(client_handler *self, unsigned char *buf,

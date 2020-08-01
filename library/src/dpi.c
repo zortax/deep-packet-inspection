@@ -43,7 +43,7 @@ p_buff *pull_packet(void) {
         return NULL;
     }
 
-    read = client->recv_msg(client, data_buf, 1);
+    read = client->recv_msg(client, &data_buf, 1);
 
     if (read <= 0) {
         dpi_state |= DPI_Error_Recv;

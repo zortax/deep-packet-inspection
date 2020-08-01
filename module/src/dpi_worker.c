@@ -23,15 +23,22 @@ static int recv_worker_main(void *arg) {
         struct nf_queue_entry *entry;
         printk(KERN_INFO "Waiting for answer from IPC client...");
         read = sck_h->basic_recv_msg(sck_h, (unsigned char *)&id, sizeof(int));
+
+        printk(KERN_INFO " - Received packet ID: %d. Bytes read: %d", (int)id,
+               read);
         if (read <= 0)
             return 0;
 
         read = sck_h->basic_recv_msg(sck_h, (unsigned char *)&verdict,
                                      sizeof(unsigned int));
+
+        printk(KERN_INFO " - Received verdict: %d. Bytes read: %d",
+               (int)verdict, read);
         if (read <= 0)
             return 0;
 
         read = sck_h->recv_msg(sck_h, ans);
+        printk(KERN_INFO " - Received data buffer. Bytes read: %d", read);
         if (read <= 0)
             return 0;
 
@@ -44,6 +51,10 @@ static int recv_worker_main(void *arg) {
         printk(KERN_INFO "Reinjecting packet. ID: %d Verdict: %d", id, verdict);
 
         nf_reinject(entry, verdict);
+
+        mutex_lock(&id_stack_lock);
+        push_id(id);
+        mutex_unlock(&id_stack_lock);
     }
 
     return 0;
@@ -106,7 +117,8 @@ static int worker_main(void *arg) {
             entry = queued_packets[id];
 
             sck_h->basic_send_msg(sck_h, (unsigned char *)&id, sizeof(int));
-            sck_h->send_msg(sck_h, entry->skb->data, entry->skb->data_len);
+            sck_h->send_msg(sck_h, entry->skb->data,
+                            (size_t)ntohs(ip_hdr(entry->skb)->tot_len));
 
             printk(KERN_INFO "Sent packet.");
 
@@ -117,7 +129,7 @@ static int worker_main(void *arg) {
             }
         }
 
-        // shutdown_client();
+        shutdown_client();
     }
     return 0;
 }
@@ -137,8 +149,8 @@ int launch_worker(void) {
 void stop_worker(void) {
     send_sig(SIGTERM, worker, 1);
     kthread_stop(worker);
-    if (recv_worker) {
+    /*if (recv_worker) {
         send_sig(SIGTERM, recv_worker, 1);
         kthread_stop(recv_worker);
-    }
+    }*/ // Yeah whatever just leak it better than constantly panicking the VM
 }
