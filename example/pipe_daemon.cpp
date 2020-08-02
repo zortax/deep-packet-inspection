@@ -39,10 +39,7 @@ void write_packets() {
         }
         log("Pulled packet: ID=%d, Length=%d.", packet->packet_id,
             (int)packet->len);
-        write(fd, &(packet->packet_id), sizeof(packet->packet_id));
-        write(fd, &default_verdict, sizeof(default_verdict));
-        write(fd, &(packet->len), sizeof(packet->len));
-        write(fd, packet->data, packet->len);
+        write_packet(fd, packet, default_verdict);
         delete packet;
     }
 }
@@ -60,13 +57,8 @@ void read_packets() {
         p_buff packet(false);
         unsigned int verdict;
         unsigned char data[MAX_BUF_SIZE];
-
-        read(fd, &(packet.packet_id), sizeof(packet.packet_id));
-        read(fd, &verdict, sizeof(verdict));
-        read(fd, &(packet.len), sizeof(packet.len));
-        read(fd, data, packet.len);
-
-        packet.data = data;
+        
+        read_packet(fd, &packet, data, &verdict);
 
         push_packet(&packet, verdict);
         if (dpi_state != DPI_Connected) {

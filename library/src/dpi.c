@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "dpi.h"
 
@@ -84,5 +85,21 @@ void push_packet(p_buff *buf, unsigned int verdict) {
     if (sent < buf->len) {
         dpi_state = DPI_Error_Send;
     }
+}
 
+void read_packet(int fd, p_buff *packet, unsigned char *data,
+                 unsigned int *current_verdict) {
+    read(fd, &(packet->packet_id), sizeof(packet->packet_id));
+    read(fd, current_verdict, sizeof(unsigned int));
+    read(fd, &(packet->len), sizeof(packet->len));
+    read(fd, data, packet->len);
+
+    packet->data = data;
+}
+
+void write_packet(int fd, p_buff *packet, unsigned int verdict) {
+    write(fd, &(packet->packet_id), sizeof(packet->packet_id));
+    write(fd, &verdict, sizeof(unsigned int));
+    write(fd, &(packet->len), sizeof(packet->len));
+    write(fd, packet->data, packet->len);
 }
