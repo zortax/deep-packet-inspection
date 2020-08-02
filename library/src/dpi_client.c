@@ -85,7 +85,7 @@ int _client_handler_recv_msg(client_handler *self, unsigned char **buf,
                                    len - received);
         if (ret <= 0) {
             D(printf("Failed to receive data after receiving %d bytes.\n",
-                   (int)received));
+                     (int)received));
             self->state = Error_Recv;
             if (allocate)
                 free(*buf);

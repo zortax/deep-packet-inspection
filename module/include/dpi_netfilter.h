@@ -5,7 +5,7 @@
 
 #define QUEUE_CAPACITY 128
 
-extern struct task_struct *worker; 
+extern struct task_struct *worker;
 
 extern struct mutex sleep_lock;
 

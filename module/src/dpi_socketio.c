@@ -119,8 +119,9 @@ int _sock_handler_recv_msg(sock_handler *self, unsigned char *buf) {
     size_t received;
 
     ret = self->basic_recv_msg(self, (unsigned char *)&len, sizeof(size_t));
-    
-    printk(KERN_INFO " - Received data buffer length: %d. Bytes read: %d.", (int)len, ret);
+
+    printk(KERN_INFO " - Received data buffer length: %d. Bytes read: %d.",
+           (int)len, ret);
 
     if (ret <= 0) {
         self->state = Error_Recv;

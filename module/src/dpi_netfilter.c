@@ -69,7 +69,7 @@ static int dpi_outfn(struct nf_queue_entry *entry, unsigned int queuenum) {
 
     if (!worker)
         return -1;
-    
+
     printk(KERN_INFO "Locking mutexes..");
     mutex_lock(&sq_lock);
     mutex_lock(&id_stack_lock);

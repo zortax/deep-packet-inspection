@@ -11,7 +11,7 @@
 #define OUT_PIPE "/tmp/packetout"
 #define IN_PIPE "/tmp/packetin"
 
-#define LOG_PREFIX "[Preifendämon 😈] "
+#define LOG_PREFIX "[Pfeifendämon 😈] "
 #define log(format, ...)                                                       \
     printf(string(LOG_PREFIX)                                                  \
                .append(format)                                                 \
@@ -57,7 +57,7 @@ void read_packets() {
         p_buff packet(false);
         unsigned int verdict;
         unsigned char data[MAX_BUF_SIZE];
-        
+
         read_packet(fd, &packet, data, &verdict);
 
         push_packet(&packet, verdict);

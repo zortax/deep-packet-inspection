@@ -1,5 +1,6 @@
 // Copyright (C) 2020 Leonard Seibold
 #include "dpi_worker.h"
+#include <linux/ip.h>
 
 sock_handler *sck_h = NULL;
 
@@ -25,7 +26,7 @@ static int recv_worker_main(void *arg) {
         read = sck_h->basic_recv_msg(sck_h, (unsigned char *)&id, sizeof(int));
 
         D(printk(KERN_INFO " - Received packet ID: %d. Bytes read: %d", (int)id,
-               read));
+                 read));
         if (read <= 0)
             return 0;
 
@@ -33,7 +34,7 @@ static int recv_worker_main(void *arg) {
                                      sizeof(unsigned int));
 
         D(printk(KERN_INFO " - Received verdict: %d. Bytes read: %d",
-               (int)verdict, read));
+                 (int)verdict, read));
         if (read <= 0)
             return 0;
 
@@ -95,6 +96,9 @@ static int worker_main(void *arg) {
         while (!kthread_should_stop()) {
             int id;
             struct nf_queue_entry *entry;
+            struct iphdr *iph;
+            unsigned int src;
+            unsigned int dest;
             // prevent lost wake-up
             set_current_state(TASK_INTERRUPTIBLE);
             mutex_lock(&sq_lock);
@@ -115,6 +119,11 @@ static int worker_main(void *arg) {
             printk(KERN_INFO "Sending packet with ID %d.", id);
 
             entry = queued_packets[id];
+
+            iph = ip_hdr(entry->skb);
+            src = (unsigned int)iph->saddr;
+            dest = (unsigned int)iph->daddr;
+            D(printk(KERN_INFO "SRC = %pI4 DEST = %pI4", &src, &dest));
 
             sck_h->basic_send_msg(sck_h, (unsigned char *)&id, sizeof(int));
             sck_h->send_msg(sck_h, entry->skb->data,
