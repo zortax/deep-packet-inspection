@@ -61,29 +61,31 @@ int _client_handler_recv_msg(client_handler *self, unsigned char **buf,
     ret = self->basic_recv_msg(self, (unsigned char *)&len, sizeof(size_t));
 
     if (ret <= 0) {
-        printf("Failed to receive data buffer length. Return value: %d\n", ret);
+        D(printf("Failed to receive data buffer length. Return value: %d\n",
+                 ret));
         return ret;
     }
 
     if (len > MAX_BUF_SIZE) {
         self->state = Error_Recv;
-        printf("Received data buffer length (%d) is bigger than maximum buffer "
-               "size (%d)\n",
-               (int)len, MAX_BUF_SIZE);
+        D(printf(
+            "Received data buffer length (%d) is bigger than maximum buffer "
+            "size (%d)\n",
+            (int)len, MAX_BUF_SIZE));
         return -1;
     }
 
     if (allocate)
         *buf = (unsigned char *)malloc(len);
 
-    printf("Received data buffer length: %d\n", (int)len);
+    D(printf("Received data buffer length: %d\n", (int)len));
     received = 0;
     while (received < len) {
         ret = self->basic_recv_msg(self, (unsigned char *)((*buf) + received),
                                    len - received);
         if (ret <= 0) {
-            printf("Failed to receive data after receiving %d bytes.\n",
-                   (int)received);
+            D(printf("Failed to receive data after receiving %d bytes.\n",
+                   (int)received));
             self->state = Error_Recv;
             if (allocate)
                 free(*buf);
@@ -117,7 +119,7 @@ int _client_handler_basic_send_msg(client_handler *self, unsigned char *buf,
         retval = sendmsg(self->sock, &msg, msg.msg_flags);
         if (retval < 0) {
             self->state = Error_Send;
-            printf("Error while send: %d\n", errno);
+            D(printf("Error while send: %d\n", errno));
             break;
         }
         i += retval;
@@ -132,11 +134,11 @@ int _client_handler_send_msg(client_handler *self, unsigned char *buf,
 
     ret = self->basic_send_msg(self, (unsigned char *)&len, sizeof(size_t));
     if (ret < 0) {
-        printf("Sent less then 0 bytes.\n");
+        D(printf("Sent less than 0 bytes.\n"));
         return -1;
     }
     ret = self->basic_send_msg(self, buf, len);
-    printf("Sent data buffer. Return value: %d.\n", ret);
+    D(printf("Sent data buffer. Return value: %d.\n", ret));
     return ret;
 }
 

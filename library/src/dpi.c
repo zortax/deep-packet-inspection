@@ -39,7 +39,7 @@ p_buff *pull_packet(void) {
 
     if (read <= 0) {
         dpi_state |= DPI_Error_Recv;
-        printf("Couldn't read packet id. Return value: %d\n", (int)read);
+        D(printf("Couldn't read packet id. Return value: %d\n", (int)read));
         return NULL;
     }
 
@@ -47,7 +47,7 @@ p_buff *pull_packet(void) {
 
     if (read <= 0) {
         dpi_state |= DPI_Error_Recv;
-        printf("Couldn't read data buffer. Return value: %d\n", (int)read);
+        D(printf("Couldn't read data buffer. Return value: %d\n", (int)read));
         return NULL;
     }
 
@@ -61,14 +61,14 @@ void push_packet(p_buff *buf, unsigned int verdict) {
     size_t sent;
 
     if (dpi_state != DPI_Connected)
-        goto clean;
+        return;
 
     sent = client->basic_send_msg(client, (unsigned char *)&(buf->packet_id),
                                   sizeof(buf->packet_id));
 
     if (sent < sizeof(buf->packet_id)) {
         dpi_state = DPI_Error_Send;
-        goto clean;
+        return;
     }
 
     sent = client->basic_send_msg(client, (unsigned char *)&verdict,
@@ -76,17 +76,13 @@ void push_packet(p_buff *buf, unsigned int verdict) {
 
     if (sent < sizeof(buf->packet_id)) {
         dpi_state = DPI_Error_Send;
-        goto clean;
+        return;
     }
 
     sent = client->send_msg(client, buf->data, buf->len);
 
     if (sent < buf->len) {
         dpi_state = DPI_Error_Send;
-        goto clean;
     }
 
-clean:
-    free(buf->data);
-    free(buf);
 }

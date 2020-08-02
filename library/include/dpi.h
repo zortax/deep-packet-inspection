@@ -1,8 +1,8 @@
 // Copyright (C) 2020 Leonard Seibold
 #ifdef __cplusplus
 extern "C" {
+#include <cstdlib>
 #endif
-
 #include "dpi_client.h"
 #include "dpi_shared_defs.h"
 
@@ -19,6 +19,16 @@ typedef struct p_buff {
     int packet_id;
     size_t len;
     unsigned char *data;
+#ifdef __cplusplus
+    bool free_data = true;
+    p_buff(bool free = true) {
+        free_data = free;
+    }
+    ~p_buff() {
+        if (free_data)
+            free(data);
+    }
+#endif
 } p_buff;
 
 extern client_handler *client;

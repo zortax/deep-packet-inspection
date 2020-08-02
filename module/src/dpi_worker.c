@@ -21,24 +21,24 @@ static int recv_worker_main(void *arg) {
 
     while (!kthread_should_stop()) {
         struct nf_queue_entry *entry;
-        printk(KERN_INFO "Waiting for answer from IPC client...");
+        D(printk(KERN_INFO "Waiting for answer from IPC client..."));
         read = sck_h->basic_recv_msg(sck_h, (unsigned char *)&id, sizeof(int));
 
-        printk(KERN_INFO " - Received packet ID: %d. Bytes read: %d", (int)id,
-               read);
+        D(printk(KERN_INFO " - Received packet ID: %d. Bytes read: %d", (int)id,
+               read));
         if (read <= 0)
             return 0;
 
         read = sck_h->basic_recv_msg(sck_h, (unsigned char *)&verdict,
                                      sizeof(unsigned int));
 
-        printk(KERN_INFO " - Received verdict: %d. Bytes read: %d",
-               (int)verdict, read);
+        D(printk(KERN_INFO " - Received verdict: %d. Bytes read: %d",
+               (int)verdict, read));
         if (read <= 0)
             return 0;
 
         read = sck_h->recv_msg(sck_h, ans);
-        printk(KERN_INFO " - Received data buffer. Bytes read: %d", read);
+        D(printk(KERN_INFO " - Received data buffer. Bytes read: %d", read));
         if (read <= 0)
             return 0;
 
@@ -101,11 +101,11 @@ static int worker_main(void *arg) {
             if (send_queue_empty()) {
                 mutex_unlock(&sq_lock);
                 mutex_lock(&sleep_lock);
-                printk(KERN_INFO "Send queue is empty. Going to sleep...");
+                D(printk(KERN_INFO "Send queue is empty. Going to sleep..."));
                 schedule();
                 mutex_unlock(&sleep_lock);
                 mutex_lock(&sq_lock);
-                printk(KERN_INFO "Woke up.");
+                D(printk(KERN_INFO "Woke up."));
             }
             set_current_state(TASK_RUNNING);
 
@@ -124,7 +124,7 @@ static int worker_main(void *arg) {
 
             if (sck_h->state & Error_Send) {
                 // Client disconnected
-                printk(KERN_INFO "Client disconnected (?)");
+                D(printk(KERN_INFO "Client disconnected (?)"));
                 break;
             }
         }

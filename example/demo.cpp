@@ -38,6 +38,7 @@ int main() {
                    "state: %d)\n",
                    dpi_state, client->state);
         }
+        delete buf;
     }
 
     return 0;
