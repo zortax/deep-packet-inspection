@@ -1,3 +1,4 @@
+// Copyright (C) 2020 Leonard Seibold
 #include "dpi.h"
 #include <cstdio>
 #include <iostream>

@@ -1,3 +1,4 @@
+// Copyright (C) 2020 Leonard Seibold
 #include "dpi.h"
 #include <arpa/inet.h>
 #include <linux/ip.h>
@@ -32,7 +33,7 @@ int main() {
                 packet.len, inet_ntoa(src), inet_ntoa(dest), ntohs(tcp->source),
                 ntohs(tcp->dest));
 
-        write_packet(STDOUT_FILENO, &packet, DPI_ACCEPT);
+        write_packet(STDOUT_FILENO, &packet, verdict);
     }
 
     return 0;

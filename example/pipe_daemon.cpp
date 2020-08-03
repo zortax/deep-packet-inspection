@@ -1,3 +1,4 @@
+// Copyright (C) 2020 Leonard Seibold
 #include <cstdio>
 #include <fcntl.h>
 #include <string.h>
