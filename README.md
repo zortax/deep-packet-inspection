@@ -35,7 +35,7 @@ More sophisticated examples can be found in the [example directory](example).
 considered *stable*, the kernel module may panic your kernel at any time.
 
 ## Building
-To build the kernel module and the library, simply ŕun the `build.sh` script:
+To build the kernel module and the library, simply run the `build.sh` script:
 ```
 $ ./build.sh
 ```
