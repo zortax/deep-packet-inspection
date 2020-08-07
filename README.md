@@ -4,7 +4,7 @@ A Loadable Kernel Module for Deep Packet Inspection using the netfilter API.
 This Module provides a simple NF_QUEUE backend (similiar but much simpler than
 the existing  [nfnetlink](https://www.netfilter.org/projects/libnfnetlink/) 
 subsystem) as well as a userland library to help you inspect, filter and 
-minupulate packets in userspace.
+manipulate packets in userspace.
 
 ## Usage
 
@@ -35,7 +35,7 @@ More sophisticated examples can be found in the [example directory](example).
 considered *stable*, the kernel module may panic your kernel at any time.
 
 ## Building
-To build the kernel module and the library, simply ŕun the `build.sh` script:
+To build the kernel module and the library, simply run the `build.sh` script:
 ```
 $ ./build.sh
 ```
@@ -48,7 +48,7 @@ root# ./load_module.sh
 root# ./unload_module.sh
 ```
 After unloading the module, you should delete `/var/packetstream.sock`, otherwise
-kernel module will not load again.
+the kernel module will not load again.
 
 The examples can be build with
 ```
